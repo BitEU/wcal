@@ -135,6 +135,9 @@ void add_todo_interactive(TodoList *list) {
     int input_y = window_height / 2 - 4;
     int input_x = window_width / 2 - 30;
     
+    // Clear the background area first
+    clear_area(input_x, input_y, 60, 8);
+    
     // Draw input box
     draw_box(input_x, input_y, 60, 8, "Add TODO");
     

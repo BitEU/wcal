@@ -69,6 +69,7 @@ void init_console(void);
 void restore_console(void);
 void update_console_size(UIState *state);
 void clear_screen(void);
+void clear_area(int x, int y, int width, int height);
 void gotoxy(int x, int y);
 void set_color(int foreground, int background);
 void draw_box(int x, int y, int width, int height, const char *title);

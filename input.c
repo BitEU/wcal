@@ -219,6 +219,9 @@ void delete_selected_item(UIState *state, AppointmentList *appointments, TodoLis
     int dialog_x = window_width / 2 - 20;
     int dialog_y = window_height / 2 - 3;
     
+    // Clear the background area first
+    clear_area(dialog_x, dialog_y, 40, 6);
+    
     draw_box(dialog_x, dialog_y, 40, 6, "Confirm Delete");
     
     set_color(NORMAL_FG, NORMAL_BG);

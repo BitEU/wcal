@@ -68,6 +68,18 @@ void clear_screen(void) {
     SetConsoleCursorPosition(hOut, topLeft);
 }
 
+void clear_area(int x, int y, int width, int height) {
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    DWORD written;
+    
+    // Clear the area line by line
+    for (int row = 0; row < height; row++) {
+        COORD coord = {x, y + row};
+        FillConsoleOutputCharacter(hOut, ' ', width, coord, &written);
+        FillConsoleOutputAttribute(hOut, NORMAL_FG | (NORMAL_BG << 4), width, coord, &written);
+    }
+}
+
 void gotoxy(int x, int y) {
     COORD coord = {x, y};
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
@@ -330,6 +342,9 @@ void draw_help_screen(UIState *state) {
     
     int help_x = state->window_width / 2 - 35;
     int help_y = 2;
+    
+    // Clear the background area first
+    clear_area(help_x, help_y, 70, 20);
     
     draw_box(help_x, help_y, 70, 20, "Help");
     

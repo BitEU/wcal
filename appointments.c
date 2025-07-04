@@ -142,6 +142,9 @@ void add_appointment_interactive(AppointmentList *list, UIState *state) {
     int input_y = state->window_height / 2 - 5;
     int input_x = state->window_width / 2 - 30;
     
+    // Clear the background area first
+    clear_area(input_x, input_y, 60, 10);
+    
     // Draw input box
     draw_box(input_x, input_y, 60, 10, "Add Appointment");
     
