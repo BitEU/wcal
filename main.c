@@ -81,7 +81,7 @@ void main_loop(void) {
                 key += 256; // Offset special keys
             }
             
-            InputAction action = process_input(key, &g_ui_state);
+            InputAction action = process_input(key, &g_ui_state, &g_appointments, &g_todos);
             
             switch (action) {
                 case ACTION_QUIT:

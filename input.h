@@ -32,7 +32,7 @@ typedef enum {
 } InputAction;
 
 // Input handling functions
-InputAction process_input(int key, UIState *state);
+InputAction process_input(int key, UIState *state, AppointmentList *appointments, TodoList *todos);
 void navigate_calendar(int key, UIState *state);
 void navigate_appointments(int key, UIState *state, AppointmentList *appointments);
 void navigate_todos(int key, UIState *state, TodoList *todos);

@@ -156,7 +156,7 @@ void draw_ui(UIState *state, AppointmentList *appointments, TodoList *todos) {
 
 void draw_calendar_panel(UIState *state, int x, int y, int width, int height, AppointmentList *appointments) {
     char title[32];
-    sprintf_s(title, sizeof(title), "Calendar (#%d)", 151); // Like in the image
+    sprintf_s(title, sizeof(title), "Calendar");
     draw_box(x, y, width, height, title);
     
     // Calendar content area

@@ -5,7 +5,7 @@
 // Global to track the last key pressed for context
 static int g_last_key_pressed = 0;
 
-InputAction process_input(int key, UIState *state) {
+InputAction process_input(int key, UIState *state, AppointmentList *appointments, TodoList *todos) {
     g_last_key_pressed = key;  // Track the key that was pressed
     
     // Global keys that work in any view
@@ -66,11 +66,11 @@ InputAction process_input(int key, UIState *state) {
             break;
             
         case VIEW_APPOINTMENTS:
-            navigate_appointments(key, state, NULL);
+            navigate_appointments(key, state, appointments);
             break;
             
         case VIEW_TODO:
-            navigate_todos(key, state, NULL);
+            navigate_todos(key, state, todos);
             break;
     }
     
@@ -174,16 +174,30 @@ void navigate_calendar(int key, UIState *state) {
 }
 
 void navigate_appointments(int key, UIState *state, AppointmentList *appointments) {
+    // Get the count of appointments for the current selected date
+    int appointment_indices[100];
+    int appointment_count = 0;
+    
+    if (appointments) {
+        appointment_count = find_appointments_by_date(appointments, state->selected_date, appointment_indices, 100);
+    }
+    
     switch (key) {
         case KEY_UP:
-            if (state->appointment_display_index > 0) {
+            if (state->cursor_y > 0) {
+                state->cursor_y -= 2;  // Each appointment takes 2 lines
                 state->appointment_display_index--;
+            } else if (state->appointment_scroll > 0) {
+                state->appointment_scroll--;
             }
             break;
             
         case KEY_DOWN:
-            state->appointment_display_index++;
-            // The actual limit check should be done against the appointment count for the day
+            // Check if we can move down (appointment_display_index is 0-based)
+            if (state->appointment_display_index < appointment_count - 1) {
+                state->cursor_y += 2;  // Each appointment takes 2 lines
+                state->appointment_display_index++;
+            }
             break;
             
         case KEY_PGUP:
@@ -197,9 +211,23 @@ void navigate_appointments(int key, UIState *state, AppointmentList *appointment
             state->appointment_scroll += 5;
             break;
     }
+    
+    // Ensure cursor_y and appointment_display_index stay in sync
+    if (state->appointment_display_index < 0) {
+        state->appointment_display_index = 0;
+        state->cursor_y = 0;
+    } else if (state->appointment_display_index >= appointment_count && appointment_count > 0) {
+        state->appointment_display_index = appointment_count - 1;
+        state->cursor_y = state->appointment_display_index * 2;
+    } else if (appointment_count == 0) {
+        state->appointment_display_index = 0;
+        state->cursor_y = 0;
+    }
 }
 
 void navigate_todos(int key, UIState *state, TodoList *todos) {
+    int todo_count = todos ? todos->count : 0;
+    
     switch (key) {
         case KEY_UP:
             if (state->cursor_y > 0) {
@@ -210,8 +238,10 @@ void navigate_todos(int key, UIState *state, TodoList *todos) {
             break;
             
         case KEY_DOWN:
-            state->cursor_y++;
-            // TODO: Check against actual todo count
+            // Check if we can move down (considering scroll offset)
+            if (state->cursor_y + state->todo_scroll < todo_count - 1) {
+                state->cursor_y++;
+            }
             break;
             
         case KEY_PGUP:
@@ -222,8 +252,29 @@ void navigate_todos(int key, UIState *state, TodoList *todos) {
             break;
             
         case KEY_PGDN:
-            state->todo_scroll += 5;
+            if (state->todo_scroll + 5 < todo_count) {
+                state->todo_scroll += 5;
+            }
             break;
+    }
+    
+    // Ensure cursor position stays within bounds
+    if (state->cursor_y < 0) {
+        state->cursor_y = 0;
+    }
+    
+    // Ensure we don't go beyond the available todos
+    if (state->cursor_y + state->todo_scroll >= todo_count && todo_count > 0) {
+        if (todo_count > 0) {
+            state->cursor_y = todo_count - 1 - state->todo_scroll;
+            if (state->cursor_y < 0) {
+                state->todo_scroll = todo_count - 1;
+                state->cursor_y = 0;
+            }
+        } else {
+            state->cursor_y = 0;
+            state->todo_scroll = 0;
+        }
     }
 }
 
