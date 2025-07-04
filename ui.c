@@ -12,6 +12,13 @@ void init_console(void) {
     CONSOLE_SCREEN_BUFFER_INFO csbi;
     GetConsoleScreenBufferInfo(hOut, &csbi);
     
+    // Set console window size to be wider but reasonable height
+    COORD bufferSize = {140, 30};  // Wider but more reasonable height
+    SetConsoleScreenBufferSize(hOut, bufferSize);
+    
+    SMALL_RECT windowSize = {0, 0, 139, 29};  // 140x30 window
+    SetConsoleWindowInfo(hOut, TRUE, &windowSize);
+    
     // Set console mode
     DWORD mode;
     GetConsoleMode(hIn, &mode);
@@ -132,8 +139,8 @@ void draw_box(int x, int y, int width, int height, const char *title) {
 void draw_ui(UIState *state, AppointmentList *appointments, TodoList *todos) {
     clear_screen();
     
-    // Calculate panel dimensions
-    int appointments_width = state->window_width / 3;
+    // Calculate panel dimensions - give appointments panel extra 10 characters
+    int appointments_width = (state->window_width / 3) + 10;
     int todo_width = state->window_width / 3;
     int calendar_width = state->window_width - appointments_width - todo_width;
     int panel_height = state->window_height - 3; // Leave room for status bar
@@ -245,18 +252,63 @@ void draw_appointments_panel(UIState *state, AppointmentList *appointments, int 
                     set_color(SELECTED_FG, SELECTED_BG);
                 }
                 
-                printf("- %02d:%02d", 
-                       appointments->items[i].date_time.hour,
-                       appointments->items[i].date_time.minute);
+                // Check if this is a multi-day event
+                int is_multiday = 0;
+                DateTime end_time = appointments->items[i].date_time;
                 
                 if (appointments->items[i].duration_minutes > 0) {
-                    int end_hour = appointments->items[i].date_time.hour;
-                    int end_min = appointments->items[i].date_time.minute + appointments->items[i].duration_minutes;
-                    while (end_min >= 60) {
-                        end_hour++;
-                        end_min -= 60;
+                    // Calculate end date and time
+                    int total_minutes = end_time.minute + appointments->items[i].duration_minutes;
+                    
+                    end_time.minute = total_minutes % 60;
+                    int total_hours = end_time.hour + (total_minutes / 60);
+                    
+                    end_time.hour = total_hours % 24;
+                    int total_days = total_hours / 24;
+                    
+                    // Add days
+                    end_time.day += total_days;
+                    
+                    // Handle month/year overflow (simplified)
+                    while (end_time.day > get_days_in_month(end_time.year, end_time.month)) {
+                        end_time.day -= get_days_in_month(end_time.year, end_time.month);
+                        end_time.month++;
+                        if (end_time.month > 12) {
+                            end_time.month = 1;
+                            end_time.year++;
+                        }
                     }
-                    printf(" -> %02d:%02d", end_hour, end_min);
+                    
+                    // Check if it spans multiple days
+                    is_multiday = (appointments->items[i].date_time.year != end_time.year ||
+                                  appointments->items[i].date_time.month != end_time.month ||
+                                  appointments->items[i].date_time.day != end_time.day);
+                }
+                
+                if (is_multiday && appointments->items[i].duration_minutes > 0) {
+                    // Multi-day format: "Jul 21, 2025 01:00 -> Jul 24, 2025 10:00"
+                    const char* months[] = {"", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                          "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+                    printf("- %s %d, %d %02d:%02d -> %s %d, %d %02d:%02d",
+                           months[appointments->items[i].date_time.month],
+                           appointments->items[i].date_time.day,
+                           appointments->items[i].date_time.year,
+                           appointments->items[i].date_time.hour,
+                           appointments->items[i].date_time.minute,
+                           months[end_time.month],
+                           end_time.day,
+                           end_time.year,
+                           end_time.hour,
+                           end_time.minute);
+                } else {
+                    // Single day format: "01:00 -> 15:00" or just "01:00"
+                    printf("- %02d:%02d", 
+                           appointments->items[i].date_time.hour,
+                           appointments->items[i].date_time.minute);
+                    
+                    if (appointments->items[i].duration_minutes > 0) {
+                        printf(" -> %02d:%02d", end_time.hour, end_time.minute);
+                    }
                 }
                 
                 set_color(NORMAL_FG, NORMAL_BG);

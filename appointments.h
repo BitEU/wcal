@@ -23,6 +23,9 @@ typedef struct {
     int capacity;
 } AppointmentList;
 
+// Duration parsing
+int parse_duration_string(const char *duration_str);
+
 // Appointment functions
 void init_appointments(AppointmentList *list);
 void free_appointments(AppointmentList *list);
