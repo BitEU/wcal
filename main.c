@@ -27,7 +27,9 @@ void initialize_app(void) {
     
     // Get current date
     time_t t = time(NULL);
-    struct tm *tm = localtime(&t);
+    struct tm tm_storage;
+    struct tm *tm = &tm_storage;
+    localtime_s(tm, &t);
     g_ui_state.current_date.year = tm->tm_year + 1900;
     g_ui_state.current_date.month = tm->tm_mon + 1;
     g_ui_state.current_date.day = tm->tm_mday;
@@ -91,7 +93,7 @@ void main_loop(void) {
                     break;
                     
                 case ACTION_ADD_APPOINTMENT:
-                    add_appointment_interactive(&g_appointments, &g_ui_state);
+                    add_appointment_interactive(&g_appointments, (struct UIState*)&g_ui_state);
                     needs_redraw = 1;
                     break;
                     

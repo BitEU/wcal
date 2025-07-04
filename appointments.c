@@ -134,13 +134,14 @@ static void read_line_visual(char *buffer, int max_len, int x, int y) {
     SetConsoleCursorInfo(hOut, &cursorInfo);
 }
 
-void add_appointment_interactive(AppointmentList *list, UIState *state) {
+void add_appointment_interactive(AppointmentList *list, struct UIState *state) {
+    UIState *ui_state = (UIState *)state;  // Cast to the full type
     Appointment new_app;
     char buffer[256];
     
     // Clear a section for input
-    int input_y = state->window_height / 2 - 5;
-    int input_x = state->window_width / 2 - 30;
+    int input_y = ui_state->window_height / 2 - 5;
+    int input_x = ui_state->window_width / 2 - 30;
     
     // Clear the background area first
     clear_area(input_x, input_y, 60, 10);
@@ -149,9 +150,9 @@ void add_appointment_interactive(AppointmentList *list, UIState *state) {
     draw_box(input_x, input_y, 60, 10, "Add Appointment");
     
     // Get date (default to selected date)
-    new_app.date_time.year = state->selected_date.year;
-    new_app.date_time.month = state->selected_date.month;
-    new_app.date_time.day = state->selected_date.day;
+    new_app.date_time.year = ui_state->selected_date.year;
+    new_app.date_time.month = ui_state->selected_date.month;
+    new_app.date_time.day = ui_state->selected_date.day;
     
     set_color(NORMAL_FG, NORMAL_BG);
     
@@ -164,7 +165,7 @@ void add_appointment_interactive(AppointmentList *list, UIState *state) {
     
     // Parse time
     int hour, minute;
-    if (sscanf(buffer, "%d:%d", &hour, &minute) != 2) {
+    if (sscanf_s(buffer, "%d:%d", &hour, &minute) != 2) {
         return;  // Invalid format
     }
     
@@ -193,8 +194,6 @@ void edit_appointment_interactive(AppointmentList *list, int index) {
     if (index < 0 || index >= list->count) return;
     
     Appointment *app = &list->items[index];
-    char buffer[256];
-    
-    // Similar to add_appointment_interactive but pre-fill with existing values
-    // Implementation would be similar to above...
+    // TODO: Implement editing functionality
+    (void)app; // Suppress unused variable warning
 }

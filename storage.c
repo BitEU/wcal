@@ -3,8 +3,8 @@
 #include <stdlib.h>
 
 int save_appointments(AppointmentList *list, const char *filename) {
-    FILE *file = fopen(filename, "wb");
-    if (!file) return 0;
+    FILE *file;
+    if (fopen_s(&file, filename, "wb") != 0) return 0;
     
     // Write header
     int version = STORAGE_VERSION;
@@ -23,8 +23,8 @@ int save_appointments(AppointmentList *list, const char *filename) {
 }
 
 int load_appointments(AppointmentList *list, const char *filename) {
-    FILE *file = fopen(filename, "rb");
-    if (!file) return 0;
+    FILE *file;
+    if (fopen_s(&file, filename, "rb") != 0) return 0;
     
     // Read header
     int version;
@@ -73,8 +73,8 @@ int load_appointments(AppointmentList *list, const char *filename) {
 }
 
 int save_todos(TodoList *list, const char *filename) {
-    FILE *file = fopen(filename, "wb");
-    if (!file) return 0;
+    FILE *file;
+    if (fopen_s(&file, filename, "wb") != 0) return 0;
     
     // Write header
     int version = STORAGE_VERSION;
@@ -93,8 +93,8 @@ int save_todos(TodoList *list, const char *filename) {
 }
 
 int load_todos(TodoList *list, const char *filename) {
-    FILE *file = fopen(filename, "rb");
-    if (!file) return 0;
+    FILE *file;
+    if (fopen_s(&file, filename, "rb") != 0) return 0;
     
     // Read header
     int version;

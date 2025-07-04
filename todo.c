@@ -169,8 +169,6 @@ void edit_todo_interactive(TodoList *list, int index) {
     if (index < 0 || index >= list->count) return;
     
     TodoItem *todo = &list->items[index];
-    char buffer[256];
-    
-    // Similar implementation to add_todo_interactive
-    // but pre-fill with existing values...
+    // TODO: Implement editing functionality
+    (void)todo; // Suppress unused variable warning
 }

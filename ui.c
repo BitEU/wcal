@@ -1,6 +1,7 @@
 #include "ui.h"
 #include <stdio.h>
 #include <string.h>
+#include <conio.h>
 
 void init_console(void) {
     // Get console handles
@@ -148,7 +149,7 @@ void draw_ui(UIState *state, AppointmentList *appointments, TodoList *todos) {
 
 void draw_calendar_panel(UIState *state, int x, int y, int width, int height) {
     char title[32];
-    sprintf(title, "Calendar (#%d)", 151); // Like in the image
+    sprintf_s(title, sizeof(title), "Calendar (#%d)", 151); // Like in the image
     draw_box(x, y, width, height, title);
     
     // Calendar content area

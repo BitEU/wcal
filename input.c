@@ -1,6 +1,7 @@
 #include "input.h"
 #include <stdio.h>
 #include <windows.h>
+#include <conio.h>
 
 InputAction process_input(int key, UIState *state) {
     // Global keys that work in any view
