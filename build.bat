@@ -12,7 +12,7 @@ if errorlevel 1 (
 
 REM Clean previous build
 echo Cleaning previous build...
-del *.obj calcurse.exe 2>nul
+del *.obj wcal.exe 2>nul
 
 REM Compile source files
 echo Compiling source files...
@@ -39,11 +39,11 @@ if errorlevel 1 goto :error
 
 REM Link executable
 echo Linking executable...
-cl main.obj ui.obj calendar.obj appointments.obj todo.obj storage.obj input.obj /Fe:calcurse.exe /link kernel32.lib user32.lib
+cl main.obj ui.obj calendar.obj appointments.obj todo.obj storage.obj input.obj /Fe:wcal.exe /link kernel32.lib user32.lib
 if errorlevel 1 goto :error
 
 echo.
-echo Build successful! Run calcurse.exe to start the calendar app.
+echo Build successful! Run wcal.exe to start the calendar app.
 echo.
 pause
 exit /b 0

@@ -152,8 +152,8 @@ void draw_calendar_panel(UIState *state, int x, int y, int width, int height) {
     
     // Day headers
     set_color(NORMAL_FG, NORMAL_BG);
-    gotoxy(content_x, content_y + 2);
-    printf("Mon Tue Wed Thu Fri Sat Sun");
+    gotoxy(content_x + 4, content_y + 2);
+    printf("Sun Mon Tue Wed Thu Fri Sat");
     
     // Calculate first day of month
     int first_day = get_first_day_of_month(state->selected_date.year, state->selected_date.month);

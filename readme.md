@@ -1,4 +1,4 @@
-# Windows Terminal Calendar App
+# wcal: A Windows Terminal Calendar App
 
 A terminal-based calendar application for Windows, inspired by calcurse. This app provides a text-based interface for managing appointments and todo lists, similar to the Unix/Linux calcurse application but designed specifically for Windows Console.
 
@@ -34,26 +34,12 @@ A terminal-based calendar application for Windows, inspired by calcurse. This ap
 ## Requirements
 
 - Windows 7 or later
-- GCC compiler (MinGW recommended)
+- MSVC compiler (MinGW recommended)
 - Windows Console (cmd.exe or Windows Terminal)
 
 ## Building
 
-### Using Make:
-```bash
-make
-```
-
-### Using batch file:
-```cmd
-build.bat
-```
-
-### Manual compilation:
-```bash
-gcc -c main.c ui.c calendar.c appointments.c todo.c storage.c input.c
-gcc *.o -o calcurse.exe -lkernel32 -luser32
-```
+Just run build.bat in a VS Dev CMD windows
 
 ## Usage
 

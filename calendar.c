@@ -38,8 +38,9 @@ int get_day_of_week(int year, int month, int day) {
     
     int h = (day + 13 * (month + 1) / 5 + k + k / 4 + j / 4 + 5 * j) % 7;
     
-    // Convert to Monday = 0, Sunday = 6
-    return (h + 5) % 7;
+    // Zeller's returns: Saturday=0, Sunday=1, Monday=2, Tuesday=3, Wednesday=4, Thursday=5, Friday=6
+    // We need: Sunday=0, Monday=1, Tuesday=2, Wednesday=3, Thursday=4, Friday=5, Saturday=6
+    return (h + 6) % 7;
 }
 
 int get_first_day_of_month(int year, int month) {
