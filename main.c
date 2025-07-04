@@ -39,15 +39,13 @@ void initialize_app(void) {
     init_appointments(&g_appointments);
     init_todos(&g_todos);
     
-    // Load saved data
-    load_appointments(&g_appointments, "appointments.dat");
-    load_todos(&g_todos, "todos.dat");
+    // Load saved data from ZIP archive
+    load_data_from_zip(&g_appointments, &g_todos);
 }
 
 void cleanup_app(void) {
-    // Save data
-    save_appointments(&g_appointments, "appointments.dat");
-    save_todos(&g_todos, "todos.dat");
+    // Save data to ZIP archive
+    save_data_to_zip(&g_appointments, &g_todos);
     
     // Clean up memory
     free_appointments(&g_appointments);
