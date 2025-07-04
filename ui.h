@@ -45,6 +45,7 @@ typedef struct {
     Date selected_date;
     int window_width, window_height;
     int appointment_scroll;
+    int appointment_display_index;  // Which appointment is selected in the display
     int todo_scroll;
     HANDLE console_output;
     HANDLE console_input;
@@ -74,7 +75,7 @@ void gotoxy(int x, int y);
 void set_color(int foreground, int background);
 void draw_box(int x, int y, int width, int height, const char *title);
 void draw_ui(UIState *state, AppointmentList *appointments, TodoList *todos);
-void draw_calendar_panel(UIState *state, int x, int y, int width, int height);
+void draw_calendar_panel(UIState *state, int x, int y, int width, int height, AppointmentList *appointments);
 void draw_appointments_panel(UIState *state, AppointmentList *appointments, int x, int y, int width, int height);
 void draw_todo_panel(UIState *state, TodoList *todos, int x, int y, int width, int height);
 void draw_status_bar(UIState *state, int y, int width);

@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <conio.h>
-#include <ctype.h>
 
 void init_appointments(AppointmentList *list) {
     list->capacity = 100;
@@ -60,49 +59,6 @@ int edit_appointment(AppointmentList *list, int index, Appointment *new_appointm
     return 1;
 }
 
-// Helper function to check if an appointment spans across a given date
-static int appointment_spans_date(Appointment *appointment, Date date) {
-    if (appointment->duration_minutes <= 0) {
-        // No duration, only check start date
-        return (appointment->date_time.year == date.year &&
-                appointment->date_time.month == date.month &&
-                appointment->date_time.day == date.day);
-    }
-    
-    // Calculate end date and time
-    DateTime end_time = appointment->date_time;
-    int total_minutes = end_time.minute + appointment->duration_minutes;
-    
-    end_time.minute = total_minutes % 60;
-    int total_hours = end_time.hour + (total_minutes / 60);
-    
-    end_time.hour = total_hours % 24;
-    int total_days = total_hours / 24;
-    
-    // Add days
-    end_time.day += total_days;
-    
-    // Handle month/year overflow (simplified)
-    while (end_time.day > get_days_in_month(end_time.year, end_time.month)) {
-        end_time.day -= get_days_in_month(end_time.year, end_time.month);
-        end_time.month++;
-        if (end_time.month > 12) {
-            end_time.month = 1;
-            end_time.year++;
-        }
-    }
-    
-    // Check if the given date falls between start and end dates (inclusive)
-    DateTime check_date = {date.year, date.month, date.day, 0, 0};
-    
-    // Convert dates to comparable values (simplified)
-    long start_value = appointment->date_time.year * 10000L + appointment->date_time.month * 100L + appointment->date_time.day;
-    long end_value = end_time.year * 10000L + end_time.month * 100L + end_time.day;
-    long check_value = check_date.year * 10000L + check_date.month * 100L + check_date.day;
-    
-    return (check_value >= start_value && check_value <= end_value);
-}
-
 // Comparison function for sorting
 static int compare_appointments(const void *a, const void *b) {
     Appointment *app1 = (Appointment*)a;
@@ -118,7 +74,39 @@ int find_appointments_by_date(AppointmentList *list, Date date, int *indices, in
     int count = 0;
     
     for (int i = 0; i < list->count && count < max_indices; i++) {
-        if (appointment_spans_date(&list->items[i], date)) {
+        Appointment *app = &list->items[i];
+        
+        // Calculate end date/time for multi-day appointments
+        DateTime end_time = app->date_time;
+        int remaining_minutes = app->duration_minutes;
+        
+        // Add minutes to get end time
+        end_time.minute += remaining_minutes;
+        while (end_time.minute >= 60) {
+            end_time.hour++;
+            end_time.minute -= 60;
+        }
+        while (end_time.hour >= 24) {
+            end_time.day++;
+            end_time.hour -= 24;
+            
+            // Handle month/year overflow
+            int days_in_month = get_days_in_month(end_time.year, end_time.month);
+            if (end_time.day > days_in_month) {
+                end_time.day -= days_in_month;
+                end_time.month++;
+                if (end_time.month > 12) {
+                    end_time.month = 1;
+                    end_time.year++;
+                }
+            }
+        }
+        
+        // Check if the given date falls within the appointment's span
+        Date start_date = {app->date_time.year, app->date_time.month, app->date_time.day};
+        Date end_date = {end_time.year, end_time.month, end_time.day};
+        
+        if (compare_dates(date, start_date) >= 0 && compare_dates(date, end_date) <= 0) {
             indices[count++] = i;
         }
     }
@@ -127,12 +115,40 @@ int find_appointments_by_date(AppointmentList *list, Date date, int *indices, in
 }
 
 int has_appointment_on_date(AppointmentList *list, Date date) {
-    for (int i = 0; i < list->count; i++) {
-        if (appointment_spans_date(&list->items[i], date)) {
-            return 1;
-        }
+    int indices[1];
+    return find_appointments_by_date(list, date, indices, 1) > 0;
+}
+
+// Function to format duration in compact XdYhZm format
+static void format_duration_compact(int total_minutes, char *buffer, int buffer_size) {
+    buffer[0] = '\0';  // Start with empty string
+    
+    if (total_minutes == 0) {
+        strcpy_s(buffer, buffer_size, "0m");
+        return;
     }
-    return 0;
+    
+    int days = total_minutes / (24 * 60);
+    int remaining = total_minutes % (24 * 60);
+    int hours = remaining / 60;
+    int minutes = remaining % 60;
+    
+    char temp[32];
+    
+    if (days > 0) {
+        sprintf_s(temp, sizeof(temp), "%dd", days);
+        strcat_s(buffer, buffer_size, temp);
+    }
+    
+    if (hours > 0) {
+        sprintf_s(temp, sizeof(temp), "%dh", hours);
+        strcat_s(buffer, buffer_size, temp);
+    }
+    
+    if (minutes > 0) {
+        sprintf_s(temp, sizeof(temp), "%dm", minutes);
+        strcat_s(buffer, buffer_size, temp);
+    }
 }
 
 // Helper function to read a line with visual feedback
@@ -181,13 +197,13 @@ void add_appointment_interactive(AppointmentList *list, struct UIState *state) {
     
     // Clear a section for input
     int input_y = ui_state->window_height / 2 - 5;
-    int input_x = ui_state->window_width / 2 - 35;
+    int input_x = ui_state->window_width / 2 - 30;
     
     // Clear the background area first
-    clear_area(input_x, input_y, 70, 12);
+    clear_area(input_x, input_y, 60, 10);
     
     // Draw input box
-    draw_box(input_x, input_y, 70, 12, "Add Appointment");
+    draw_box(input_x, input_y, 60, 10, "Add Appointment");
     
     // Get date (default to selected date)
     new_app.date_time.year = ui_state->selected_date.year;
@@ -214,25 +230,31 @@ void add_appointment_interactive(AppointmentList *list, struct UIState *state) {
     
     // Get duration
     gotoxy(input_x + 2, input_y + 3);
-    printf("Duration (e.g., 3d2h30m, 4h, 30m, 0 for no end): ");
-    read_line_visual(buffer, 20, input_x + 49, input_y + 3);
+    printf("Duration (e.g., 30m, 4h, 3d2h30m): ");
+    read_line_visual(buffer, 20, input_x + 37, input_y + 3);
     
-    if (strlen(buffer) == 0) return;  // Cancelled
-    
-    // Check if it's just "0" for no end time
-    if (strcmp(buffer, "0") == 0) {
-        new_app.duration_minutes = 0;
-    } else {
-        // Parse the new duration format
-        int parsed_duration = parse_duration_string(buffer);
-        if (parsed_duration < 0) {
-            // Invalid format - show error and return
-            gotoxy(input_x + 2, input_y + 5);
-            printf("Invalid duration format! Press any key...");
-            _getch();
-            return;
+    // Parse duration string
+    new_app.duration_minutes = 0;
+    char *p = buffer;
+    int num = 0;
+    while (*p) {
+        if (*p >= '0' && *p <= '9') {
+            num = num * 10 + (*p - '0');
+        } else if (*p == 'd' || *p == 'D') {
+            new_app.duration_minutes += num * 24 * 60;
+            num = 0;
+        } else if (*p == 'h' || *p == 'H') {
+            new_app.duration_minutes += num * 60;
+            num = 0;
+        } else if (*p == 'm' || *p == 'M') {
+            new_app.duration_minutes += num;
+            num = 0;
         }
-        new_app.duration_minutes = parsed_duration;
+        p++;
+    }
+    // If there's a number left without a suffix, assume minutes
+    if (num > 0) {
+        new_app.duration_minutes += num;
     }
     
     // Get description
@@ -250,55 +272,100 @@ void edit_appointment_interactive(AppointmentList *list, int index) {
     if (index < 0 || index >= list->count) return;
     
     Appointment *app = &list->items[index];
-    // TODO: Implement editing functionality
-    (void)app; // Suppress unused variable warning
-}
-
-// Parse duration string in format like "3d2h30m", "4h", "30m", etc.
-// Returns total duration in minutes, or -1 if invalid format
-int parse_duration_string(const char *duration_str) {
-    if (!duration_str || strlen(duration_str) == 0) {
-        return 0;  // Empty string means 0 duration
-    }
+    Appointment new_app = *app;  // Copy current appointment
+    char buffer[256];
     
-    int total_minutes = 0;
-    int current_number = 0;
-    int has_number = 0;
+    // Get window dimensions for centering
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
+    int window_width = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+    int window_height = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
     
-    for (int i = 0; duration_str[i] != '\0'; i++) {
-        char c = duration_str[i];
-        
-        if (isdigit(c)) {
-            current_number = current_number * 10 + (c - '0');
-            has_number = 1;
-        } else if (c == 'd' || c == 'D') {
-            if (!has_number) return -1;  // Invalid: no number before 'd'
-            total_minutes += current_number * 24 * 60;  // days to minutes
-            current_number = 0;
-            has_number = 0;
-        } else if (c == 'h' || c == 'H') {
-            if (!has_number) return -1;  // Invalid: no number before 'h'
-            total_minutes += current_number * 60;  // hours to minutes
-            current_number = 0;
-            has_number = 0;
-        } else if (c == 'm' || c == 'M') {
-            if (!has_number) return -1;  // Invalid: no number before 'm'
-            total_minutes += current_number;  // minutes
-            current_number = 0;
-            has_number = 0;
-        } else if (isspace(c)) {
-            // Skip whitespace
-            continue;
-        } else {
-            // Invalid character
-            return -1;
+    // Clear a section for input
+    int input_y = window_height / 2 - 5;
+    int input_x = window_width / 2 - 30;
+    
+    // Clear the background area first
+    clear_area(input_x, input_y, 60, 12);
+    
+    // Draw input box
+    draw_box(input_x, input_y, 60, 12, "Edit Appointment");
+    
+    set_color(NORMAL_FG, NORMAL_BG);
+    
+    // Show current values and get new ones
+    
+    // Time
+    gotoxy(input_x + 2, input_y + 2);
+    printf("Time (HH:MM) [%02d:%02d]: ", app->date_time.hour, app->date_time.minute);
+    read_line_visual(buffer, 10, input_x + 26, input_y + 2);
+    
+    if (strlen(buffer) > 0) {
+        int hour, minute;
+        if (sscanf_s(buffer, "%d:%d", &hour, &minute) == 2) {
+            new_app.date_time.hour = hour;
+            new_app.date_time.minute = minute;
         }
     }
     
-    // If we ended with a number but no unit, that's invalid
-    if (has_number) {
-        return -1;
+    // Duration
+    gotoxy(input_x + 2, input_y + 3);
+    char duration_str[32];
+    format_duration_compact(app->duration_minutes, duration_str, sizeof(duration_str));
+    printf("Duration [%s]: ", duration_str);
+    // Calculate correct cursor position based on actual text length
+    int cursor_x = input_x + 2 + 10 + (int)strlen(duration_str) + 3; // "Duration [" + duration + "]: "
+    read_line_visual(buffer, 20, cursor_x, input_y + 3);
+    
+    if (strlen(buffer) > 0) {
+        // Parse duration string (same as add)
+        new_app.duration_minutes = 0;
+        char *p = buffer;
+        int num = 0;
+        while (*p) {
+            if (*p >= '0' && *p <= '9') {
+                num = num * 10 + (*p - '0');
+            } else if (*p == 'd' || *p == 'D') {
+                new_app.duration_minutes += num * 24 * 60;
+                num = 0;
+            } else if (*p == 'h' || *p == 'H') {
+                new_app.duration_minutes += num * 60;
+                num = 0;
+            } else if (*p == 'm' || *p == 'M') {
+                new_app.duration_minutes += num;
+                num = 0;
+            }
+            p++;
+        }
+        if (num > 0) {
+            new_app.duration_minutes += num;
+        }
     }
     
-    return total_minutes;
+    // Description
+    gotoxy(input_x + 2, input_y + 4);
+    printf("Description:");
+    gotoxy(input_x + 2, input_y + 5);
+    printf("[%.50s]", app->description);
+    gotoxy(input_x + 2, input_y + 6);
+    printf("New: ");
+    read_line_visual(buffer, MAX_DESCRIPTION_LENGTH - 1, input_x + 7, input_y + 6);
+    
+    if (strlen(buffer) > 0) {
+        strcpy_s(new_app.description, MAX_DESCRIPTION_LENGTH, buffer);
+    }
+    
+    // Update the appointment
+    edit_appointment(list, index, &new_app);
+}
+
+int get_appointment_index_for_display(AppointmentList *list, Date date, int display_index) {
+    int indices[100];  // Max appointments per day
+    int count = find_appointments_by_date(list, date, indices, 100);
+    
+    if (display_index >= 0 && display_index < count) {
+        return indices[display_index];
+    }
+    
+    return -1;
 }

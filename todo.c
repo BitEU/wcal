@@ -60,9 +60,9 @@ int edit_todo(TodoList *list, int index, TodoItem *new_todo) {
 }
 
 void toggle_todo_completion(TodoList *list, int index) {
-    if (index >= 0 && index < list->count) {
-        list->items[index].completed = !list->items[index].completed;
-    }
+    if (index < 0 || index >= list->count) return;
+    
+    list->items[index].completed = !list->items[index].completed;
 }
 
 // Comparison function for sorting todos
@@ -169,6 +169,104 @@ void edit_todo_interactive(TodoList *list, int index) {
     if (index < 0 || index >= list->count) return;
     
     TodoItem *todo = &list->items[index];
-    // TODO: Implement editing functionality
-    (void)todo; // Suppress unused variable warning
+    TodoItem new_todo = *todo;  // Copy current todo
+    char buffer[256];
+    
+    // Get window dimensions for centering
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
+    int window_width = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+    int window_height = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+    
+    // Clear a section for input
+    int input_y = window_height / 2 - 4;
+    int input_x = window_width / 2 - 25;
+    
+    // Clear the background area first
+    clear_area(input_x, input_y, 50, 8);
+    
+    // Draw input box
+    draw_box(input_x, input_y, 50, 8, "Edit TODO");
+    
+    set_color(NORMAL_FG, NORMAL_BG);
+    
+    // Show current values and get new ones
+    
+    // Description
+    gotoxy(input_x + 2, input_y + 2);
+    printf("Current: %.30s", todo->description);
+    gotoxy(input_x + 2, input_y + 3);
+    printf("New description: ");
+    
+    // Simple input reading
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_CURSOR_INFO cursorInfo;
+    GetConsoleCursorInfo(hOut, &cursorInfo);
+    cursorInfo.bVisible = TRUE;
+    SetConsoleCursorInfo(hOut, &cursorInfo);
+    
+    int pos = 0;
+    char ch;
+    gotoxy(input_x + 18, input_y + 3);
+    
+    while (1) {
+        ch = _getch();
+        
+        if (ch == '\r' || ch == '\n') {  // Enter
+            buffer[pos] = '\0';
+            break;
+        } else if (ch == '\b' && pos > 0) {  // Backspace
+            pos--;
+            gotoxy(input_x + 18 + pos, input_y + 3);
+            printf(" ");
+            gotoxy(input_x + 18 + pos, input_y + 3);
+        } else if (ch == 27) {  // Escape
+            cursorInfo.bVisible = FALSE;
+            SetConsoleCursorInfo(hOut, &cursorInfo);
+            return;  // Cancel
+        } else if (ch >= 32 && ch < 127 && pos < MAX_DESCRIPTION_LENGTH - 1) {  // Printable chars
+            buffer[pos++] = ch;
+            printf("%c", ch);
+        }
+    }
+    
+    // Hide cursor again
+    cursorInfo.bVisible = FALSE;
+    SetConsoleCursorInfo(hOut, &cursorInfo);
+    
+    if (strlen(buffer) > 0) {
+        strcpy_s(new_todo.description, MAX_DESCRIPTION_LENGTH, buffer);
+    }
+    
+    // Priority
+    gotoxy(input_x + 2, input_y + 4);
+    printf("0=Normal, 1=High, 2=Urgent) [%d]: ", todo->priority);
+    
+    pos = 0;
+    gotoxy(input_x + 38, input_y + 4);
+    
+    cursorInfo.bVisible = TRUE;
+    SetConsoleCursorInfo(hOut, &cursorInfo);
+    
+    while (1) {
+        ch = _getch();
+        
+        if (ch == '\r' || ch == '\n') {  // Enter
+            break;
+        } else if (ch == 27) {  // Escape
+            cursorInfo.bVisible = FALSE;
+            SetConsoleCursorInfo(hOut, &cursorInfo);
+            return;  // Cancel
+        } else if (ch >= '0' && ch <= '2') {  // Valid priority
+            new_todo.priority = ch - '0';
+            printf("%c", ch);
+            break;
+        }
+    }
+    
+    cursorInfo.bVisible = FALSE;
+    SetConsoleCursorInfo(hOut, &cursorInfo);
+    
+    // Update the todo
+    list->items[index] = new_todo;
 }

@@ -147,14 +147,14 @@ void draw_ui(UIState *state, AppointmentList *appointments, TodoList *todos) {
     
     // Draw panels
     draw_appointments_panel(state, appointments, 0, 0, appointments_width, panel_height);
-    draw_calendar_panel(state, appointments_width, 0, calendar_width, panel_height);
+    draw_calendar_panel(state, appointments_width, 0, calendar_width, panel_height, appointments);
     draw_todo_panel(state, todos, appointments_width + calendar_width, 0, todo_width, panel_height);
     
     // Draw status bar
     draw_status_bar(state, state->window_height - 2, state->window_width);
 }
 
-void draw_calendar_panel(UIState *state, int x, int y, int width, int height) {
+void draw_calendar_panel(UIState *state, int x, int y, int width, int height, AppointmentList *appointments) {
     char title[32];
     sprintf_s(title, sizeof(title), "Calendar (#%d)", 151); // Like in the image
     draw_box(x, y, width, height, title);
@@ -195,6 +195,12 @@ void draw_calendar_panel(UIState *state, int x, int y, int width, int height) {
             if (week == 0 && dow < first_day) {
                 printf("    ");
             } else if (day <= days_in_month) {
+                // Create date for this day
+                Date current_day = {state->selected_date.year, state->selected_date.month, day};
+                
+                // Check if this day has appointments
+                int has_appointments = has_appointment_on_date(appointments, current_day);
+                
                 // Check if this is today
                 if (day == state->current_date.day &&
                     state->selected_date.month == state->current_date.month &&
@@ -208,7 +214,12 @@ void draw_calendar_panel(UIState *state, int x, int y, int width, int height) {
                     set_color(NORMAL_FG, NORMAL_BG);
                 }
                 
-                printf(" %2d ", day);
+                // Print day with appointment indicator
+                if (has_appointments) {
+                    printf(" %2d*", day);  // Add asterisk for appointments
+                } else {
+                    printf(" %2d ", day);
+                }
                 day++;
             } else {
                 printf("    ");
@@ -238,89 +249,93 @@ void draw_appointments_panel(UIState *state, AppointmentList *appointments, int 
     set_color(NORMAL_FG, NORMAL_BG);
     int line = 0;
     int found = 0;
+    int appointment_indices[100];  // Store actual appointment indices
+    int appointment_count = 0;
     
-    for (int i = 0; i < appointments->count; i++) {
-        if (appointments->items[i].date_time.year == state->selected_date.year &&
-            appointments->items[i].date_time.month == state->selected_date.month &&
-            appointments->items[i].date_time.day == state->selected_date.day) {
+    // Find all appointments that span the selected date using the existing function
+    appointment_count = find_appointments_by_date(appointments, state->selected_date, appointment_indices, 100);
+    
+    for (int idx = 0; idx < appointment_count; idx++) {
+        int i = appointment_indices[idx];  // Actual appointment index
+        
+        if (line >= state->appointment_scroll && line - state->appointment_scroll < height - 6) {
+            gotoxy(content_x, content_y + 2 + (line - state->appointment_scroll));
             
-            if (line >= state->appointment_scroll && line - state->appointment_scroll < height - 6) {
-                gotoxy(content_x, content_y + 2 + (line - state->appointment_scroll));
+            // Highlight if selected
+            if (state->selected_view == VIEW_APPOINTMENTS && line == state->cursor_y) {
+                set_color(SELECTED_FG, SELECTED_BG);
+            }
+            
+            // Check if this is a multi-day event
+            int is_multiday = 0;
+            DateTime end_time = appointments->items[i].date_time;
+            
+            if (appointments->items[i].duration_minutes > 0) {
+                // Calculate end date and time
+                int total_minutes = end_time.minute + appointments->items[i].duration_minutes;
                 
-                // Highlight if selected
-                if (state->selected_view == VIEW_APPOINTMENTS && line == state->cursor_y) {
-                    set_color(SELECTED_FG, SELECTED_BG);
+                end_time.minute = total_minutes % 60;
+                int total_hours = end_time.hour + (total_minutes / 60);
+                
+                end_time.hour = total_hours % 24;
+                int total_days = total_hours / 24;
+                
+                // Add days
+                end_time.day += total_days;
+                
+                // Handle month/year overflow (simplified)
+                while (end_time.day > get_days_in_month(end_time.year, end_time.month)) {
+                    end_time.day -= get_days_in_month(end_time.year, end_time.month);
+                    end_time.month++;
+                    if (end_time.month > 12) {
+                        end_time.month = 1;
+                        end_time.year++;
+                    }
                 }
                 
-                // Check if this is a multi-day event
-                int is_multiday = 0;
-                DateTime end_time = appointments->items[i].date_time;
+                // Check if it spans multiple days
+                is_multiday = (appointments->items[i].date_time.year != end_time.year ||
+                              appointments->items[i].date_time.month != end_time.month ||
+                              appointments->items[i].date_time.day != end_time.day);
+            }
+            
+            if (is_multiday && appointments->items[i].duration_minutes > 0) {
+                // Multi-day format: "Jul 21, 2025 01:00 -> Jul 24, 2025 10:00"
+                const char* months[] = {"", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+                printf("- %s %d, %d %02d:%02d -> %s %d, %d %02d:%02d",
+                       months[appointments->items[i].date_time.month],
+                       appointments->items[i].date_time.day,
+                       appointments->items[i].date_time.year,
+                       appointments->items[i].date_time.hour,
+                       appointments->items[i].date_time.minute,
+                       months[end_time.month],
+                       end_time.day,
+                       end_time.year,
+                       end_time.hour,
+                       end_time.minute);
+            } else {
+                // Single day format: "01:00 -> 15:00" or just "01:00"
+                printf("- %02d:%02d", 
+                       appointments->items[i].date_time.hour,
+                       appointments->items[i].date_time.minute);
                 
                 if (appointments->items[i].duration_minutes > 0) {
-                    // Calculate end date and time
-                    int total_minutes = end_time.minute + appointments->items[i].duration_minutes;
-                    
-                    end_time.minute = total_minutes % 60;
-                    int total_hours = end_time.hour + (total_minutes / 60);
-                    
-                    end_time.hour = total_hours % 24;
-                    int total_days = total_hours / 24;
-                    
-                    // Add days
-                    end_time.day += total_days;
-                    
-                    // Handle month/year overflow (simplified)
-                    while (end_time.day > get_days_in_month(end_time.year, end_time.month)) {
-                        end_time.day -= get_days_in_month(end_time.year, end_time.month);
-                        end_time.month++;
-                        if (end_time.month > 12) {
-                            end_time.month = 1;
-                            end_time.year++;
-                        }
-                    }
-                    
-                    // Check if it spans multiple days
-                    is_multiday = (appointments->items[i].date_time.year != end_time.year ||
-                                  appointments->items[i].date_time.month != end_time.month ||
-                                  appointments->items[i].date_time.day != end_time.day);
+                    printf(" -> %02d:%02d", end_time.hour, end_time.minute);
                 }
-                
-                if (is_multiday && appointments->items[i].duration_minutes > 0) {
-                    // Multi-day format: "Jul 21, 2025 01:00 -> Jul 24, 2025 10:00"
-                    const char* months[] = {"", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                                          "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
-                    printf("- %s %d, %d %02d:%02d -> %s %d, %d %02d:%02d",
-                           months[appointments->items[i].date_time.month],
-                           appointments->items[i].date_time.day,
-                           appointments->items[i].date_time.year,
-                           appointments->items[i].date_time.hour,
-                           appointments->items[i].date_time.minute,
-                           months[end_time.month],
-                           end_time.day,
-                           end_time.year,
-                           end_time.hour,
-                           end_time.minute);
-                } else {
-                    // Single day format: "01:00 -> 15:00" or just "01:00"
-                    printf("- %02d:%02d", 
-                           appointments->items[i].date_time.hour,
-                           appointments->items[i].date_time.minute);
-                    
-                    if (appointments->items[i].duration_minutes > 0) {
-                        printf(" -> %02d:%02d", end_time.hour, end_time.minute);
-                    }
-                }
-                
-                set_color(NORMAL_FG, NORMAL_BG);
-                
-                // Description on next line
-                gotoxy(content_x + 2, content_y + 3 + (line - state->appointment_scroll));
-                printf("%.30s", appointments->items[i].description);
-                
-                line += 2;
             }
-            found = 1;
+            
+            set_color(NORMAL_FG, NORMAL_BG);
+            
+            // Description on next line
+            gotoxy(content_x + 2, content_y + 3 + (line - state->appointment_scroll));
+            printf("%.30s", appointments->items[i].description);
+            
+            line += 2;
+        } else {
+            line += 2; // Still increment line count for appointments that are scrolled off
         }
+        found = 1;
     }
     
     if (!found) {
