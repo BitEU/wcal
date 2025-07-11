@@ -1,0 +1,3 @@
+cl /c /W3 /O2 /TC /nologo main.c ui.c calendar.c appointments.c todo.c storage.c input.c
+
+cl /nologo main.obj ui.obj calendar.obj appointments.obj todo.obj storage.obj input.obj /Fe:wcal.exe /link kernel32.lib user32.lib
