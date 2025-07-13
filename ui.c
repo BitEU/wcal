@@ -12,10 +12,15 @@ void init_console(void) {
     CONSOLE_SCREEN_BUFFER_INFO csbi;
     GetConsoleScreenBufferInfo(hOut, &csbi);
     
-    // Set console window size to be wider but reasonable height
-    COORD bufferSize = {140, 30};  // Wider but more reasonable height
+    // First, set window size smaller to allow buffer resize
+    SMALL_RECT tempWindowSize = {0, 0, 79, 24};  
+    SetConsoleWindowInfo(hOut, TRUE, &tempWindowSize);
+    
+    // Set console buffer size to match desired window exactly (no scrollbars)
+    COORD bufferSize = {140, 30};  
     SetConsoleScreenBufferSize(hOut, bufferSize);
     
+    // Now set the window size to match buffer exactly
     SMALL_RECT windowSize = {0, 0, 139, 29};  // 140x30 window
     SetConsoleWindowInfo(hOut, TRUE, &windowSize);
     
@@ -38,6 +43,7 @@ void init_console(void) {
     // Clear screen
     clear_screen();
 }
+
 
 void restore_console(void) {
     HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -137,7 +143,13 @@ void draw_box(int x, int y, int width, int height, const char *title) {
 }
 
 void draw_ui(UIState *state, AppointmentList *appointments, TodoList *todos) {
-    clear_screen();
+    // Hide cursor during drawing to prevent flicker
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_CURSOR_INFO cursorInfo;
+    GetConsoleCursorInfo(hOut, &cursorInfo);
+    BOOL originalVisible = cursorInfo.bVisible;
+    cursorInfo.bVisible = FALSE;
+    SetConsoleCursorInfo(hOut, &cursorInfo);
     
     // Calculate panel dimensions - give appointments panel extra 10 characters
     int appointments_width = (state->window_width / 3) + 10;
@@ -145,13 +157,28 @@ void draw_ui(UIState *state, AppointmentList *appointments, TodoList *todos) {
     int calendar_width = state->window_width - appointments_width - todo_width;
     int panel_height = state->window_height - 3; // Leave room for status bar
     
-    // Draw panels
+    // Only clear what we absolutely need to clear, then draw immediately
+    // Use a single clear operation per panel to minimize flicker
+    
+    // Appointments panel
+    clear_area(0, 0, appointments_width, panel_height);
     draw_appointments_panel(state, appointments, 0, 0, appointments_width, panel_height);
+    
+    // Calendar panel  
+    clear_area(appointments_width, 0, calendar_width, panel_height);
     draw_calendar_panel(state, appointments_width, 0, calendar_width, panel_height, appointments);
+    
+    // Todo panel
+    clear_area(appointments_width + calendar_width, 0, todo_width, panel_height);
     draw_todo_panel(state, todos, appointments_width + calendar_width, 0, todo_width, panel_height);
     
-    // Draw status bar
+    // Status bar
+    clear_area(0, state->window_height - 2, state->window_width, 2);
     draw_status_bar(state, state->window_height - 2, state->window_width);
+    
+    // Restore cursor visibility
+    cursorInfo.bVisible = originalVisible;
+    SetConsoleCursorInfo(hOut, &cursorInfo);
 }
 
 void draw_calendar_panel(UIState *state, int x, int y, int width, int height, AppointmentList *appointments) {
